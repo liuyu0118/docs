@@ -8,7 +8,7 @@ export default defineConfig({
   head: [["link", { rel: "icon", href: "/docs/head.svg" }]],
   themeConfig: {
     outlineTitle: "目录",
-    outline: [2, 6],
+    outline: [1, 6],
     sidebar: [],
     aside: "left",
     nav: [

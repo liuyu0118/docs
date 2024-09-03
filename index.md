@@ -4,7 +4,7 @@ layout: home
 
 hero:
   name: "ly的文档网站"
-  text: "构建知识库"
+  text: "知行合一"
   tagline: 好记性不如烂笔头
   image:
   src: /head.svg
@@ -12,7 +12,7 @@ hero:
   actions:
     - theme: brand
       text: 建站原因
-      link: /markdown-examples
+      link: /pages/reason/index
 
 features:
   - title: Feature A
