@@ -2,9 +2,10 @@ import { defineConfig } from "vitepress";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+  base: "/docs/",
   title: "ly的文档",
   description: "A VitePress Site",
-  head: [["link", { rel: "icon", href: "/head.svg" }]],
+  head: [["link", { rel: "icon", href: "/docs/head.svg" }]],
   themeConfig: {
     outlineTitle: "目录",
     outline: [2, 6],
