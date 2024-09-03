@@ -3,16 +3,16 @@
 layout: home
 
 hero:
-  name: "My Awesome Project"
-  text: "A VitePress Site"
-  tagline: My great project tagline
+  name: "ly的文档网站"
+  text: "构建知识库"
+  tagline: 好记性不如烂笔头
+  image:
+  src: /head.svg
+  alt: 背景图
   actions:
     - theme: brand
-      text: Markdown Examples
+      text: 建站原因
       link: /markdown-examples
-    - theme: alt
-      text: API Examples
-      link: /api-examples
 
 features:
   - title: Feature A
@@ -22,4 +22,3 @@ features:
   - title: Feature C
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
-

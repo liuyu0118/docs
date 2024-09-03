@@ -2,28 +2,44 @@ import { defineConfig } from "vitepress";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  base: "/docs/",
-  title: "My Awesome Project",
+  title: "ly的文档",
   description: "A VitePress Site",
+  head: [["link", { rel: "icon", href: "/head.svg" }]],
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
+    outlineTitle: "目录",
+    outline: [2, 6],
+    sidebar: [],
+    aside: "left",
     nav: [
-      { text: "Home", link: "/" },
-      { text: "Examples", link: "/markdown-examples" },
-    ],
-
-    sidebar: [
+      { text: "react", link: "/" },
       {
-        text: "Examples",
+        text: "教程",
         items: [
-          { text: "Markdown Examples", link: "/markdown-examples" },
-          { text: "Runtime API Examples", link: "/api-examples" },
+          { text: "VitePress", link: "/pages/tutorials/vitepress.md" },
+          { text: "Markdown", link: "/pages/tutorials/markdown.md" },
         ],
       },
     ],
-
-    socialLinks: [
-      { icon: "github", link: "https://github.com/vuejs/vitepress" },
-    ],
+    // 设置搜索框的样式
+    search: {
+      provider: "local",
+      options: {
+        translations: {
+          button: {
+            buttonText: "搜索文档",
+            buttonAriaLabel: "搜索文档",
+          },
+          modal: {
+            noResultsText: "无法找到相关结果",
+            resetButtonTitle: "清除查询条件",
+            footer: {
+              selectText: "选择",
+              navigateText: "切换",
+            },
+          },
+        },
+      },
+    },
+    socialLinks: [{ icon: "github", link: "https://github.com/liuyu0118" }],
   },
 });
