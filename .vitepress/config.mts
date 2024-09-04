@@ -3,16 +3,16 @@ import { defineConfig } from "vitepress";
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: "/docs/",
-  title: "ly的文档",
+  title: "柒文档",
   description: "A VitePress Site",
   head: [["link", { rel: "icon", href: "/docs/head.svg" }]],
   themeConfig: {
     outlineTitle: "目录",
-    outline: [1, 6],
+    outline: [2, 6],
     sidebar: [],
     aside: "left",
     nav: [
-      { text: "react", link: "/" },
+      { text: "react", link: "/pages/react/index.md" },
       {
         text: "教程",
         items: [
