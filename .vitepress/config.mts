@@ -13,6 +13,17 @@ export default defineConfig({
     aside: "left",
     nav: [
       { text: "react", link: "/pages/react/index.md" },
+      { text: "vue", link: "/pages/vue/index.md" },
+      { text: "vite", link: "/pages/vite/index.md" },
+      { text: "css", link: "/pages/css/index.md" },
+      {
+        text: "node",
+        items: [
+          { text: "node基础", link: "/pages/node/nodejs.md" },
+          { text: "mysql基础", link: "/pages/node/mysql.md" },
+          { text: "脚手架", link: "/pages/node/scaffold.md" },
+        ],
+      },
       {
         text: "教程",
         items: [
