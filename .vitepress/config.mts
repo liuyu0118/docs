@@ -12,8 +12,17 @@ export default defineConfig({
     sidebar: [],
     aside: "left",
     nav: [
-      { text: "react", link: "/pages/react/index.md" },
-      { text: "vue", link: "/pages/vue/index.md" },
+      {
+        text: "react",
+        items: [{ text: "教程", link: "/pages/react/index.md" }],
+      },
+      {
+        text: "vue",
+        items: [
+          { text: "教程", link: "/pages/vue/index.md" },
+          { text: "vue3.5", link: "/pages/vue/index.md" },
+        ],
+      },
       { text: "vite", link: "/pages/vite/index.md" },
       { text: "css", link: "/pages/css/index.md" },
       {
@@ -30,6 +39,10 @@ export default defineConfig({
           { text: "VitePress", link: "/pages/tutorials/vitepress.md" },
           { text: "Markdown", link: "/pages/tutorials/markdown.md" },
         ],
+      },
+      {
+        text: "工作相关",
+        link: "/pages/work/index.md",
       },
     ],
     // 设置搜索框的样式
