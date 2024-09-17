@@ -41,7 +41,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "工作相关",
+        text: "问题",
         link: "/pages/work/index.md",
       },
     ],
