@@ -564,7 +564,7 @@ createRoot(document.getElementById("root")).render(
 
 [React 源码解析](https://pomb.us/build-your-own-react/)
 
-**虚拟 DOM(Virtual DOM)**
+### 虚拟 DOM(Virtual DOM)
 
 Virtual DOM 就是用 JavaScript 对象去描述一个 DOM 结构，虚拟 DOM 不是直接操作浏览器的真实 DOM，而是首先对 UI 的更新在虚拟 DOM 中进行，再将变更高效地同步到真实 DOM 中。
 
@@ -604,11 +604,11 @@ const React = {
 };
 ```
 
-**React Fiber**
+### React Fiber
 
 Fiber 是 React 16 引入的一种新的协调引擎，用于解决和优化 React 应对复杂 UI 渲染时的性能问题
 
-示例：[未使用 fiber 版本](https://claudiopro.github.io/react-fiber-vs-stack-demo/stack.html) [使用 fiber 版本](https://claudiopro.github.io/react-fiber-vs-stack-demo/fiber.html)
+示例：[未使用 fiber 版本](https://claudiopro.github.io/react-fiber-vs-stack-demo/stack.html) 与 [使用 fiber 版本](https://claudiopro.github.io/react-fiber-vs-stack-demo/fiber.html) 的区别
 
 **Fiber 的作用**
 
@@ -620,3 +620,543 @@ Fiber 是 React 16 引入的一种新的协调引擎，用于解决和优化 Rea
 - 优先级调度：在 Fiber 架构下，React 可以根据不同任务的优先级决定何时更新哪些部分。React 会优先更新用户可感知的部分（如动画、用户输入），而低优先级的任务（如数据加载后的界面更新）可以延后执行。
 - 双缓存树（Fiber Tree）：Fiber 架构中有两棵 Fiber 树——current fiber tree（当前正在渲染的 Fiber 树）和 work in progress fiber tree（正在处理的 Fiber 树）。React 使用这两棵树来保存更新前后的状态，从而更高效地进行比较和更新。
 - 任务切片：在浏览器的空闲时间内（利用 requestIdleCallback 思想），React 可以将渲染任务拆分成多个小片段，逐步完成 Fiber 树的构建，避免一次性完成所有渲染任务导致的阻塞。
+
+**双缓存**
+
+react 内部有两颗树维护着两个状态：`fiber tree` 与 `work in progress fiber tree`
+
+- `fiber tree`：表示当前正在渲染的 fiber 树
+- `work in progress fiber tree`：表示更新过程中新生成的 fiber 树，也就是渲染的下一次 UI 状态
+
+当我们用 canvas 绘制动画时，每一帧绘制前都会调用 ctx.clearRect 清除上一帧的画面，如果当前帧画面计算量比较大，导致清除上一帧画面到绘制当前帧画面之间有较长间隙，就会出现白屏。
+
+为了解决这个问题，我们可以在内存中绘制当前帧动画，绘制完毕后直接用当前帧替换上一帧画面，由于省去了两帧替换间的计算时间，不会出现从白屏到出现画面的闪烁情况。
+
+**任务切片**
+
+我们在理解任务切片之前，需要理解浏览器一帧做些什么
+
+- 处理事件的回调 click...事件
+- 处理计时器的回调
+- 开始帧
+- 执行 `requestAnimationFrame` 动画的回调
+- 计算机页面布局计算 合并到主线程
+- 绘制
+- 如果此时还有空闲时间，执行 `requestIdleCallback`
+
+假如要更新 10000 条数据，我们可以分成三个任务进行更新，并把每一段任务插入`requestIdleCallback`
+
+### diff 算法
+
+Diff 算法主要用于比较新旧虚拟 DOM 树，找出需要更新的部分，减少实际 DOM 操作的次数，从而提升性能。
+
+**步骤：**
+
+- 根节点比较：首先比较两个树的根节点。
+- 节点类型检查：
+  - 相同类型：进行属性对比、子节点对比。
+  - 不同类型：替换节点。
+- 子节点比较：通过递归对比每个子节点：
+  - 如果子节点相同，继续比较其子节点。
+  - 使用 key 来识别节点的新增、删除或重排序。
+- 批量更新：React 在完成 Diff 比较后，会将所有需要更新的内容一次性应用到实际 DOM 中，减少重排和重绘。
+
+**代码实现 vDom Fiber Diff**
+
+```js
+const React = {
+  createElement(type, props, ...children) {
+    return {
+      type,
+      props: {
+        ...props,
+        children: children.map((child) =>
+          typeof child === "object" ? child : React.createTextElement(child)
+        ),
+      },
+    };
+  },
+  createTextElement(text) {
+    return {
+      type: "TEXT_ELEMENT",
+      props: {
+        nodeValue: text,
+        children: [],
+      },
+    };
+  },
+};
+
+let wipRoot = null; //当前正在工作的fiber树
+let currentRoot = null; //当前fiber树的根
+let deletions = null; //存储需要删除的fiber
+let nextUnitOfWork = null; //下一个工作单元
+
+const render = (element, container) => {
+  wipRoot = {
+    dom: container, //渲染目标的 DOM 容器
+    props: {
+      children: [element], //要渲染的元素（如 React 元素）
+    },
+    //alternate 是 React Fiber 树中的一个关键概念，用于双缓冲机制（双缓冲 Fiber Tree）。currentRoot 是之前已经渲染过的 Fiber 树的根，wipRoot 是新一轮更新的根 Fiber 节点。
+    //它们通过 alternate 属性相互关联
+    alternate: currentRoot, //旧的fiber树
+  };
+  ////nextUnitOfWork 是下一个要执行的工作单元（即 Fiber 节点）。在这里，将其设置为 wipRoot，表示渲染工作从根节点开始
+  nextUnitOfWork = wipRoot;
+  //专门用于存放在更新过程中需要删除的节点。在 Fiber 更新机制中，如果某些节点不再需要，就会将它们放入 deletions，
+  //最后在 commitRoot 阶段将它们从 DOM 中删除
+  deletions = [];
+};
+
+//创建 fiber 节点
+const createFiber = (element, parent) => {
+  return {
+    type: element.type,
+    props: element.props,
+    parent,
+    dom: null,
+    child: null,
+    sibling: null,
+    alternate: null,
+    effectTag: null,
+  };
+};
+
+//创建dom节点
+const createDom = (fiber) => {
+  const dom =
+    fiber.type === "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(fiber.type);
+  updateDom(dom, {}, fiber.props);
+  return dom;
+};
+//更新dom节点属性
+const updateDom = (dom, prevProps, nextProps) => {
+  //删除旧属性
+  Object.keys(prevProps)
+    .filter((name) => name !== "children")
+    .forEach((key) => {
+      dom[key] = "";
+    });
+  //添加新属性
+  Object.keys(nextProps)
+    .filter((name) => name !== "children")
+    .filter((name) => prevProps[name] !== nextProps[name])
+    .forEach((key) => {
+      dom[key] = nextProps[key];
+    });
+};
+
+//Fiber 调度器 实现将耗时任务拆分成多个小的工作单元
+//deadline 表示浏览器空闲时间
+function workLoop(deadline) {
+  //用来指示是否需要让出控制权给浏览器。如果时间快用完了，则设为 true，以便及时暂停任务，避免阻塞主线程
+  let shouldYield = false;
+  while (nextUnitOfWork && !shouldYield) {
+    //performUnitOfWork 是一个函数，它处理当前的工作单元，并返回下一个要执行的工作单元。每次循环会更新 nextUnitOfWork 为下一个工作单元
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    //使用 deadline.timeRemaining() 来检查剩余的空闲时间。如果时间少于 1 毫秒，就设置 shouldYield 为 true，表示没有空闲时间了，就让出控制权
+    shouldYield = deadline.timeRemaining() < 1;
+  }
+  //表示所有的任务执行完成 并且还有待提交的工作根
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot();
+  }
+  //使用 requestIdleCallback 来安排下一个空闲时间段继续执行 workLoop，让任务在浏览器空闲时继续进行
+  requestIdleCallback(workLoop);
+}
+requestIdleCallback(workLoop);
+
+// 执行一个工作单元
+function performUnitOfWork(fiber) {
+  // 如果没有 DOM 节点，为当前 Fiber 创建 DOM 节点
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
+  }
+  //确保每个 Fiber 节点都在内存中有一个对应的 DOM 节点准备好，以便后续在提交阶段更新到实际的 DOM 树中
+  // 创建子节点的 Fiber
+  // 子节点在children中
+  const elements = fiber.props.children;
+  //遍历子节点
+  reconcileChildren(fiber, elements);
+  // 返回下一个工作单元（child, sibling, or parent）
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+    nextFiber = nextFiber.parent;
+  }
+  return null;
+}
+// diff 算法: 将子节点与之前的 Fiber 树进行比较
+const reconcileChildren = (fiber, elements) => {
+  let index = 0;
+  let prevSibling = null;
+  let oldFiber = fiber.alternate && fiber.alternate.child; //旧的fiber树
+  while (index < elements.length || oldFiber != null) {
+    const element = elements[index];
+    let newFiber = null;
+
+    // 比较旧 Fiber 和新元素
+    const sameType = oldFiber && element && element.type === oldFiber.type;
+    //如果是同类型的节点，复用
+    if (sameType) {
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        parent: fiber,
+        dom: oldFiber.dom,
+        alternate: oldFiber,
+        effectTag: "UPDATE",
+      };
+    }
+    //如果新节点存在，但类型不同，新增fiber节点
+    if (element && !sameType) {
+      newFiber = createFiber(element, fiber);
+      newFiber.effectTag = "PLACEMENT";
+    }
+    //如果旧节点存在，但新节点不存在，删除旧节点
+    if (oldFiber && !sameType) {
+      oldFiber.effectTag = "DELETION";
+      deletions.push(oldFiber);
+    }
+    //移动旧fiber指针到下一个兄弟节点
+    if (oldFiber) oldFiber = oldFiber.sibling;
+    // 将新fiber节点插入到DOM树中
+    if (index == 0) {
+      //将第一个子节点设置为父节点的子节点
+      fiber.child = newFiber;
+    } else if (element) {
+      //将后续子节点作为前一个兄弟节点的兄弟
+      prevSibling.sibling = newFiber;
+    }
+    //更新兄弟节点
+    prevSibling = newFiber;
+    index++;
+  }
+};
+const commitRoot = () => {
+  deletions.forEach(commitWork); // 删除需要删除的 Fiber 节点
+  commitWork(wipRoot.child);
+  currentRoot = wipRoot; //存旧的fiber
+  wipRoot = null;
+};
+
+// 提交单个 Fiber 节点
+const commitWork = (fiber) => {
+  if (!fiber) return;
+  const domParent = fiber.parent.dom;
+  if (fiber.effectTag == "PLACEMENT") {
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag == "UPDATE") {
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag == "DELETION") {
+    domParent.removeChild(fiber.dom);
+  }
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+};
+// 测试用例diff
+render(
+  React.createElement(
+    "div",
+    { id: 1 },
+    React.createElement("span", null, "1111")
+  ),
+  document.getElementById("root")
+);
+
+setTimeout(() => {
+  render(
+    React.createElement(
+      "div",
+      { id: 1 },
+      React.createElement("span", null, "2222")
+    ),
+    document.getElementById("root")
+  );
+}, 2000);
+```
+
+### requestidlecallback
+
+它提供了一种机制，允许开发者在浏览器空闲时运行低优先级的任务，而不会影响关键任务和动画的性能。
+
+**requestidlecallback 执行阶段**
+
+- 处理事件的回调 click...事件
+- 处理计时器的回调
+- 开始帧
+- 执行 requestAnimationFrame 动画的回调
+- 计算机页面布局计算 合并到主线程
+- 绘制
+- 如果此时还有空闲时间，执行 requestIdleCallback
+
+**基本用法**
+
+`requestidlecallback` 接受两个参数，第一个是一个 `callback` 并且在回调函数中会注入参数 `deadline`，第二个是`options`
+
+`deadline`有两个值：
+
+- `deadline.timeRemaining()` ：是否还有空闲时间(毫秒)
+- `deadline.didTimeout` ：是否因为超时被强制执行(布尔值)
+
+`options`：
+
+- `timeout:2000`：回调的最大等待时间（毫秒），如果在指定的 timeout 时间内没有空闲时间，回调会强制执行，避免任务无限期推迟。
+
+**案例**
+
+模拟 2000 条数据
+
+```js
+const total = 2000;
+const arr = [];
+function genrateArr() {
+  for (let i = 0; i < total; i++) {
+    arr.push(function () {
+      document.body.innerHTML += `<div>${i + 1}</div>`;
+    });
+  }
+}
+genrateArr();
+function workloop(item) {
+  // 检查当前空闲时间是否大于1毫秒，并且任务数组中还有任务未执行
+  if (item.timeRemaining() > 1 && arr.length > 0) {
+    const fn = arr.shift();
+    fn();
+  }
+  // 再次使用 requestIdleCallback 调度下一个空闲时间执行任务
+  requestIdleCallback(workloop);
+}
+// 开始调度任务，在浏览器空闲时执行 workLoop
+requestIdleCallback(workloop);
+```
+
+**面试相关问题**
+
+- 兼容性差 Safari 并不支持 [Can I use](https://caniuse.com/?search=requestIdleCallback)
+- 控制精细度 React 要根据组件优先级、更新的紧急程度等信息，更精确地安排渲染的工作
+- 执行时机 requestIdleCallback(callback) 回调函数的执行间隔是 50ms（W3C 规定），也就是 20FPS，1 秒内执行 20 次，间隔较长。
+- 差异性 每个浏览器实现该 API 的方式不同，导致执行时机有差异有的快有的慢
+
+**requestIdleCallback 替代方案**
+
+`MessageChannel`：选择 `MessageChannel` 的原因，是首先异步得是个宏任务，因为宏任务中会在下次事件循环中执行，不会阻塞当前页面的更新。`MessageChannel` 是一个宏任务。没选常见的 `setTimeout`，是因为 `MessageChannel` 能较快执行，在 0 ～ 1ms 内触发，像 setTimeout 即便设置 timeout 为 0 还是需要 4 ～ 5ms。若浏览器不支持 `MessageChannel`，还是得降级为 `setTimeout`。
+
+![settimeout](../../public//react/settimeout.png)
+
+**MessageChannel 基本用法**
+
+`MessageChanne` 设计初衷是为了方便我们在不同的上下文之间进行通讯，如 web Worker,iframe 它提供了两个端口（port1 和 port2），通过这些端口，消息可以在两个独立的线程之间双向传递
+
+```js
+const channel = new MessageChannel();
+//设置 port1 的消息处理函数
+channel.port1.onmessage = (event) => {
+  console.log(event.data);
+};
+// 通过 port2 发送消息给 port1
+channel.port2.postMessage("我是port2");
+```
+
+**实现简易版 react 调度器**
+
+React 调度器给每一个任务分配了优先级
+
+- ImmediatePriority : 立即执行的优先级，级别最高
+- UserBlockingPriority : 用户阻塞级别的优先级
+- NormalPriority : 正常的优先级
+- LowPriority : 低优先级
+- IdlePriority : 最低阶的优先级
+
+> 同时还给每个任务设置了过期时间，过期时间越短，优先级越高
+> 声明 taskQueue 为数组，存储每个任务的信息，包括优先级，过期时间，回调函数，
+> 声明 isPerformingWork 为布尔值，表示当前是否在执行任务，
+> 声明 port 为 MessageChannel，用于发送和接收消息，
+> 然后将任务添加到队列里面，并且添加进去的时候还需要根据优先级进行排序，然后调用 workLoop 执行任务
+
+```js
+const ImmediatePriority = 1; // 立即执行的优先级, 级别最高 [点击事件，输入框，]
+const UserBlockingPriority = 2; // 用户阻塞级别的优先级, [滚动，拖拽这些]
+const NormalPriority = 3; // 正常的优先级 [redner 列表 动画 网络请求]
+const LowPriority = 4; // 低优先级  [分析统计]
+const IdlePriority = 5; // 最低阶的优先级, 可以被闲置的那种 [console.log]
+
+function getCurrentTime() {
+  return performance.now();
+}
+
+class SimpleScheduler {
+  constructor() {
+    this.taskQueue = [];
+    this.isPerformingWork = false; //是否在工作 防止重复调用
+    const channel = new MessageChannel();
+    this.port = channel.port2; //发送消息
+    channel.port1.onmessage = this.performWorkUntilDeadline.bind(this);
+  }
+  /**
+   * 调度任务
+   * @param {优先级} priorityLevel
+   * @param {回调函数} callback
+   */
+  scheduleCallback(priorityLevel, callback) {
+    const curTime = getCurrentTime();
+    let timeout;
+    // 根据优先级设置超时时间，超时时间越小，优先级越高
+    switch (priorityLevel) {
+      case ImmediatePriority:
+        timeout = -1;
+        break;
+      case UserBlockingPriority:
+        timeout = 250;
+        break;
+      case LowPriority:
+        timeout = 10000;
+        break;
+      case IdlePriority:
+        timeout = 1073741823; //32位操作系统v8引擎所对应的最大时间
+        break;
+      case NormalPriority:
+      default:
+        timeout = 5000;
+        break;
+    }
+    const task = {
+      callback,
+      priorityLevel,
+      expirationTime: curTime + timeout, // 直接根据当前时间加上超时时间
+    };
+    this.push(this.taskQueue, task);
+    this.schedulePerformWorkUntilDeadline();
+  }
+  // 通过 MessageChannel 调度执行任务
+  schedulePerformWorkUntilDeadline() {
+    //没有工作再执行
+    if (!this.isPerformingWork) {
+      this.isPerformingWork = true;
+      this.port.postMessage(null);
+    }
+  }
+  // 执行任务
+  performWorkUntilDeadline() {
+    this.isPerformingWork = true;
+    this.workloop();
+    this.isPerformingWork = false;
+  }
+  workloop() {
+    let currentTask = this.peek(this.taskQueue);
+    while (currentTask) {
+      let cb = currentTask.callback;
+      cb && cb();
+      this.pop(this.taskQueue);
+      currentTask = this.peek(this.taskQueue);
+    }
+  }
+  push(queue, task) {
+    queue.push(task);
+    queue.sort((a, b) => a.expirationTime - b.expirationTime);
+  }
+  peek(queue) {
+    return queue[0] || null;
+  }
+  pop(queue) {
+    return queue.shift();
+  }
+}
+
+const s = new SimpleScheduler();
+s.scheduleCallback(UserBlockingPriority, () => {
+  console.log(2);
+});
+s.scheduleCallback(NormalPriority, () => {
+  console.log(3);
+});
+s.scheduleCallback(ImmediatePriority, () => {
+  console.log(1);
+});
+```
+
+## 组件
+
+### 全局组件
+
+Message/index.tsx
+
+```tsx
+import { Root, createRoot } from "react-dom/client";
+import "./index.css";
+export default function Message() {
+  return <div>提示消息</div>;
+}
+interface Itesm {
+  ele: HTMLDivElement;
+  root: Root;
+}
+const queue: Itesm[] = [];
+window.onShow = () => {
+  const ele = document.createElement("div");
+  ele.className = "message";
+  ele.style.top = `${queue.length * 50}px`;
+  document.body.appendChild(ele);
+  const root = createRoot(ele);
+  root.render(<Message />);
+  queue.push({ ele, root });
+  setTimeout(() => {
+    const item = queue.find((item) => item.ele === ele)!;
+    document.body.removeChild(item.ele);
+    item.root.unmount();
+    queue.splice(queue.indexOf(item), 1);
+  }, 2000);
+};
+//声明扩充
+declare global {
+  interface Window {
+    onShow: () => void;
+  }
+}
+```
+
+Message/index.css
+
+```css
+.message {
+  width: 160px;
+  height: 30px;
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  margin-left: -80px;
+  background: #fff;
+  border: 1px solid #ccc;
+  text-align: center;
+  line-height: 30px;
+  border-radius: 5px;
+}
+```
+
+在 main.tsx 引入全局组件
+
+```tsx
+import "./components/Message/index.tsx";
+```
+
+在 APP.tsx 中使用
+
+```tsx
+function App() {
+  return (
+    <>
+      <button onClick={() => window.onShow()}>提示消息</button>
+    </>
+  );
+}
+
+export default App;
+```
