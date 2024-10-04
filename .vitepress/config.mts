@@ -13,14 +13,16 @@ export default defineConfig({
     aside: "left",
     nav: [
       {
-        text: "react",
-        items: [{ text: "教程", link: "/pages/react/index.md" }],
-      },
-      {
-        text: "vue",
+        text: "框架",
         items: [
-          { text: "教程", link: "/pages/vue/index.md" },
-          { text: "vue3.5", link: "/pages/vue/index.md" },
+          {
+            text: "react",
+            items: [{ text: "教程", link: "/pages/react/index.md" }],
+          },
+          {
+            text: "vue",
+            items: [{ text: "组件", link: "/pages/vue/index.md" }],
+          },
         ],
       },
       { text: "vite", link: "/pages/vite/index.md" },
@@ -39,6 +41,10 @@ export default defineConfig({
           { text: "VitePress", link: "/pages/tutorials/vitepress.md" },
           { text: "Markdown", link: "/pages/tutorials/markdown.md" },
         ],
+      },
+      {
+        text: "面试",
+        link: "/pages/interview/index.md",
       },
       {
         text: "问题",

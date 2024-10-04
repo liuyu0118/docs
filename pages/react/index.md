@@ -1160,3 +1160,235 @@ function App() {
 
 export default App;
 ```
+
+### 组件通信
+
+> React 组件使用 props 来互相通信。每个父组件都可以提供 props 给它的子组件，从而将一些信息传递给它。Props 可能会让你想起 HTML 属性，但你可以通过它们传递任何 JavaScript 值，包括对象、数组和函数 以及 html 元素，这样可以使我们的组件更加灵活。
+
+1. 父向子组件传递 props
+
+```tsx
+string title={'测试'}
+number id={1}
+boolean isGirl={false}
+null empty={null}
+undefined empty={undefined}
+object obj={ { a: 1, b: 2 } }
+array arr={[1, 2, 3]}
+function cb={(a: number, b: number) => a + b}
+JSX.Element element={<div>测试</div>}
+```
+
+子组件接受父组件传递的 props，props 是一个对象，会作为函数的第一个参数接受传过来的 props 值，我们需要遵守单向数据流，子组件不能直接修改父组件的 props，在 React 源码中会使用 Object.freeze 冻结 props，限制 props 的修改。
+
+`Object.freeze()`：静态方法可以使一个对象被冻结。冻结对象可以防止扩展，并使现有的属性不可写入和不可配置。被冻结的对象不能再被更改：不能添加新的属性，不能移除现有的属性，不能更改它们的可枚举性、可配置性、可写性或值，对象的原型也不能被重新指定
+
+`React.FC`：是函数式组件，是在 TS 使用的一个范型。FC 是 Function Component 的缩写，能帮助我们自动推导 Props 的类型。
+
+```tsx
+import React from "react";
+interface Props {
+  title: string;
+  id: number;
+  obj: {
+    a: number;
+    b: number;
+  };
+  arr: number[];
+  cb: (a: number, b: number) => number;
+  empty: null;
+  element: JSX.Element;
+}
+//第一种方式
+const Test: React.FC<Props> = (props) => {
+  console.log(props);
+  return <div>Test</div>;
+};
+//第二种方式
+const Test = (props: Props) => {
+  console.log(props);
+  return <div>Test</div>;
+};
+
+export default Test;
+```
+
+2. 定义默认值
+
+将 props 进行解构，定义默认值
+
+```tsx
+import React from "react";
+interface Props {
+  title?: string;
+  id: number;
+  obj: {
+    a: number;
+    b: number;
+  };
+  arr: number[];
+  cb: (a: number, b: number) => number;
+  empty: null;
+  element: JSX.Element;
+}
+
+const Test: React.FC<Props> = ({ title = "默认标题" }) => {
+  return <div>Test</div>;
+};
+
+export default Test;
+```
+
+使用 defaultProps 进行默认值赋值，最后把 defaultProps 和 props 合并
+
+```tsx
+import React from "react";
+interface Props {
+  title?: string;
+  id: number;
+  obj: {
+    a: number;
+    b: number;
+  };
+  arr: number[];
+  cb: (a: number, b: number) => number;
+  empty: null;
+  element: JSX.Element;
+}
+
+const defaultProps: Partial<Props> = {
+  title: "默认标题",
+};
+
+const Test: React.FC<Props> = (props) => {
+  const { title } = { ...defaultProps, ...props };
+  return <div>{title}</div>;
+};
+
+export default Test;
+```
+
+3. props.children
+
+类似于 Vue 的插槽，直接在子组件内部插入标签会自动一个参数 `props.children`
+
+```tsx
+function App() {
+  return (
+    <>
+      <Test>
+        <div>111</div>
+      </Test>
+    </>
+  );
+}
+```
+
+使用`children`属性，注：在之前的版本 children 是不需要手动定义的，在 18 之后改为需要手动定义类型
+
+```tsx
+import React from "react";
+interface Props {
+  children: React.ReactNode; //手动声明children
+}
+
+const Test: React.FC<Props> = (props) => {
+  return <div>{props.children}</div>;
+};
+
+export default Test;
+```
+
+4. 子组件给父组件传值
+
+父组件传递函数过去,其本质就是函数的回调
+
+```tsx
+import Test from "./components/Test";
+function App() {
+  const fn = (params: string) => {
+    console.log("子组件触发了 父组件的事件", params);
+  };
+  return (
+    <>
+      <Test callback={fn}></Test>
+    </>
+  );
+}
+```
+
+子组件接受函数，并且在对应的事件调用函数，回调参数回去
+
+```tsx
+import React from "react";
+interface Props {
+  callback: (params: string) => void;
+  children?: React.ReactNode;
+}
+
+const Test: React.FC<Props> = (props) => {
+  return (
+    <div>
+      <button onClick={() => props.callback("这是子组件")}>派发事件</button>
+    </div>
+  );
+};
+
+export default Test;
+```
+
+5. 兄弟组件通信
+
+原理就是发布订阅设计模式，原生浏览器已经实现了这个模式我们可以直接使用。不想使用原生浏览器，可以使用 [mitt](https://www.npmjs.com/package/mitt)
+
+```tsx
+import Card from "./components/Card";
+import Test from "./components/Test";
+function App() {
+  return (
+    <>
+      <Test></Test>
+      <Card></Card>
+    </>
+  );
+}
+
+export default App;
+```
+
+```tsx
+import React from "react";
+const Test: React.FC = (props) => {
+  const event = new Event("on-card"); //添加到事件中心
+  const clickTap = () => {
+    console.log(event);
+    event.params = { name: "我是测试组件" };
+    window.dispatchEvent(event); //派发事件
+  };
+  return (
+    <div>
+      <button onClick={clickTap}>派发事件</button>
+    </div>
+  );
+};
+//扩充event类型
+declare global {
+  interface Event {
+    params: any;
+  }
+}
+
+export default Test;
+```
+
+```tsx
+import "./index.css";
+export default function Test2() {
+  //接受参数
+  window.addEventListener("on-card", (e) => {
+    console.log(e.params, "触发了");
+  });
+
+  return <div className="card"></div>;
+}
+```
