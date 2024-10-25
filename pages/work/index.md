@@ -27,8 +27,8 @@
 
 使用`requestIdleCallback`与`window.onload`实现
 
-```js
-function autoPreloadImages() {
+```javascript
+function autoPreloadImages() {
   // 使用 require.context 动态获取指定文件夹及其子文件夹下的所有图片
   // require.context(目录, 是否递归, 匹配文件的正则表达式)
   const files = require.context('../../assets/img', true, /^./.*pre-.*.(png|jpe?g|gif|webp)$/i);
