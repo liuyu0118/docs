@@ -61,8 +61,6 @@ function autoPreloadImages() {
 ## 手写 promise
 
 ```js
-const { error } = require("console");
-
 const PENDING = "pending";
 const FULFILLED = "fulfilled";
 const REJECTED = "rejected";
