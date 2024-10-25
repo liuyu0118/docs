@@ -58,6 +58,92 @@ function autoPreloadImages() {
 }
 ```
 
+## 手写 promise
+
+```js
+const { error } = require("console");
+
+const PENDING = "pending";
+const FULFILLED = "fulfilled";
+const REJECTED = "rejected";
+//添加到微任务
+function runMicrotask(fn) {
+  if (typeof queueMicrotask === "undefined") {
+    queueMicrotask(fn);
+  } else if (
+    typeof process === "object" &&
+    typeof process.nextTick === "function"
+  ) {
+    //node环境
+    process.nextTick(fn);
+  } else if (typeof MutationObserver === "Object") {
+    const text = document.createTextNode("");
+    const observer = new MutationObserver(fn);
+    observer.observe(text, {
+      characterData: true,
+    });
+    text.data = "1";
+  } else {
+    setTimeout(fn);
+  }
+}
+class MyPromise {
+  #state = PENDING;
+  #value;
+  #handlers = [];
+  constructor(executor) {
+    const resolve = (v) => {
+      this.#setState(FULFILLED, v);
+    };
+    const reject = (v) => {
+      this.#setState(REJECTED, v);
+    };
+    try {
+      executor(resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  }
+  #setState(state, value) {
+    if (this.#state !== PENDING) return;
+    this.#value = value;
+    this.#state = state;
+    this.#runTask();
+  }
+  #runTask() {
+    runMicrotask(() => {
+      this.#handlers.forEach((cb) => cb());
+      this.#handlers = [];
+    });
+  }
+  then(onFulfilled, onRejected) {
+    return new MyPromise((resolve, reject) => {
+      this.#handlers.push(() => {
+        const cb = this.#state === FULFILLED ? onFulfilled : onRejected;
+        const res = typeof cb === "function" ? cb(this.#value) : this.#value;
+        //判断是否是是promise
+        if (typeof res?.then == "function") {
+          res.then(resolve, reject);
+        } else {
+          resolve(res);
+        }
+      });
+      if (this.#state !== PENDING) {
+        this.#runTask();
+      }
+    });
+  }
+  //catch方法不是promise a+规范 而是es6
+  catch(onRejected) {
+    return this.then(null, onRejected);
+  }
+}
+
+const p = new MyPromise((resolve, reject) => {
+  reject("完成");
+});
+```
+
 ## 性能优化
 
 **1、启用前端缓存**
