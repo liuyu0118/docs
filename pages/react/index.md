@@ -1083,6 +1083,96 @@ s.scheduleCallback(ImmediatePriority, () => {
 });
 ```
 
+## Hooks
+在react中，Hook只能在 组件的顶层，或自己的 Hook 中调用它。你不能在循环或条件语句中调用它。
+### 数据驱动
+
+#### useState
+
+使用方法
+```ts
+const [state,setState] = useState()
+```
+
+基本数据类型直接调用set方法修改
+
+复杂数据类型：数组
+
+在React中你需要将数组视为只读的，不可以直接修改原数组，例如：不可以调用 arr.push() arr.pop() 等方法。
+
+| 避免使用会改变原数组 | 推荐使用不会改变原数组          |
+|------------|----------------------|
+| 添加元素 push，unshift   | concat，[...arr] 展开语法 |
+| 删除元素 pop，shift，splice  | filter，slice         |
+| 替换元素 splice，arr[i] = ... 赋值   | map                  |
+| 排序 reverse，sort   | 先将数组复制一份再使用reverse，sort        |
+
+指定位置插入元素
+
+```ts
+  let [arr, setArr] = useState([1, 2, 3])
+  let startIndex = 0
+  let endIndex = 2;
+  setArr(
+      [
+        ...arr.slice(startIndex, endIndex),
+        2.5,
+        ...arr.slice(endIndex)
+      ]
+    )
+
+```
+复杂数据类型：对象
+>useState可以接受一个函数，可以在函数里面编写逻辑，初始化值，注意这个只会执行一次，更新的时候就不会执行了。
+
+>在使用setObject的时候，可以使用Object.assign合并对象 或者 ... 合并对象，不能单独赋值，不然会覆盖原始对象。
+
+useState更新机制：set函数是异步更新
+>当我们多次以相同的操作更新状态时，React 会进行比较，如果值相同，则会屏蔽后续的更新行为。自带防抖的功能，防止频繁的更新。
+```tsx
+import { useState } from "react";
+
+function App() {
+  const [index, setIndex] = useState(0);
+  function update() {
+      setIndex(index + 1);
+      setIndex(index + 1);
+      setIndex(index + 1);
+  }
+  return (
+    <>
+      <div>index:{index}</div>
+      <button onClick={update}>更新</button>
+    </>
+  );
+}
+
+export default App;
+```
+>为了解决这个问题，你可以向setIndex 传递一个更新函数，而不是一个状态。
+```tsx
+import { useState } from "react";
+
+function App() {
+  const [index, setIndex] = useState(0);
+  function update() {
+    setIndex((prev) => prev + 1);
+    setIndex((prev) => prev + 1);
+    setIndex((prev) => prev + 1);
+  }
+  return (
+          <>
+            <div>index:{index}</div>
+            <button onClick={update}>更新</button>
+          </>
+  );
+}
+
+export default App;
+```
+#### useReducer
+
+
 ## 组件
 
 ### 全局组件
