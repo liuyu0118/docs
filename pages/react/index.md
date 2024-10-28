@@ -1089,14 +1089,13 @@ s.scheduleCallback(ImmediatePriority, () => {
 
 #### useState
 
-使用方法
 ```ts
 const [state,setState] = useState()
 ```
 
-基本数据类型直接调用set方法修改
+**1. 基本数据类型直接调用set方法修改**
 
-复杂数据类型：数组
+**2. 复杂数据类型：数组**
 
 在React中你需要将数组视为只读的，不可以直接修改原数组，例如：不可以调用 arr.push() arr.pop() 等方法。
 
@@ -1122,7 +1121,7 @@ const [state,setState] = useState()
     )
 
 ```
-复杂数据类型：对象
+**3. 复杂数据类型：对象**
 >useState可以接受一个函数，可以在函数里面编写逻辑，初始化值，注意这个只会执行一次，更新的时候就不会执行了。
 
 >在使用setObject的时候，可以使用Object.assign合并对象 或者 ... 合并对象，不能单独赋值，不然会覆盖原始对象。
@@ -1171,7 +1170,19 @@ function App() {
 export default App;
 ```
 #### useReducer
+> useReducer 跟 useState 一样的都是帮我们管理组件的状态的，
+> useReducer可以使我们的代码具有更好的可读性，可维护性。
 
+```tsx
+const [state,dispatch] = useReducer(reducer,initialArg,init?)
+```
+- reducer 是一个处理函数，用于更新状态, reducer 里面包含了两个参数，第一个参数是 state，第二个参数是 action。reducer 会返回一个新的 state。
+- initialArg 是 state 的初始值。 
+- init 是一个可选的函数，用于初始化 state，如果编写了init函数，则默认值使用init函数的返回值，否则使用initialArg。
+
+
+
+### 副作用
 
 ## 组件
 
