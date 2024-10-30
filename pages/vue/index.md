@@ -1,9 +1,6 @@
 ## 封装 protable
-
-vue3 + antd 3
-
+> vue3 tsx antd
 types.ts
-
 ```ts
 import { InputProps, SelectProps, TableColumnType } from "ant-design-vue";
 import { ButtonProps } from "ant-design-vue/es/button";
@@ -311,4 +308,324 @@ export default defineComponent({
     );
   },
 });
+```
+
+## 封装 useForm 
+> vue3 tsx antd
+
+types.ts
+```ts
+import { ButtonProps, FormItemProps } from 'ant-design-vue'
+import { VNode } from 'vue'
+export type UseFormConfig = {
+    title: string
+    width: number
+    col: number
+    onPullData?: (params: UseFormOpenParams) => Promise<any> | any
+    onSubmit?: (
+        model: Record<string, any>,
+        params: UseFormOpenParams
+    ) => Promise<boolean> | boolean
+    items: UseFormItem[]
+    buttons?: UseFormButton[]
+    saveButtonHidden?: boolean
+    cancelButtonHidden?: boolean
+    saveButtonText?: string
+    /**
+     * 只在form.render时生效
+     */
+    buttonAlign?: 'left' | 'right' | 'center'
+}
+export type UseFormButton = ButtonProps & {
+    onClick?: (data?: any) => Promise<void> | void | any
+    text: string
+}
+export type UseFormItem = FormItemProps & {
+    colSpan?: number
+    render?: () => VNode
+}
+export type UseFormOpenParams = {
+    title?: string
+    isEdit?: boolean
+    data?: any
+}
+
+```
+index.tsx
+
+```tsx
+iimport {
+    render as vueRender,
+        createVNode,
+        ref,
+        defineAsyncComponent,
+        defineComponent,
+        reactive,
+        onMounted
+} from 'vue'
+import { Modal, ConfigProvider, Button } from 'ant-design-vue'
+import { UseFormButton, UseFormConfig, UseFormOpenParams } from './types'
+import zhCN from 'ant-design-vue/lib/locale/zh_CN'
+import { cloneDeep, isEmpty, isFunction } from 'lodash-es'
+const AsyncForm = defineAsyncComponent(() => import('./form'))
+export function useForm(cfg: UseFormConfig) {
+    const visible = ref(false)
+    const modalTitle = ref()
+    const model = ref<Record<string, any>>({})
+    const formRef = ref(null)
+    let buttons: UseFormButton[] = []
+    let openParams: UseFormOpenParams
+    if (cfg.buttons) {
+        buttons = cfg.buttons
+    }
+
+    const getFormRef = () => {
+        const { form } = formRef.value as any
+        if (!form) throw '未定义表单'
+        return form
+    }
+    const submit = async () => {
+        const needValidateFields: any = []
+        cfg.items.forEach(item => {
+            if (item.hidden !== true) needValidateFields.push(item.name)
+        })
+        try {
+            await getFormRef().validate(needValidateFields)
+            if (!isFunction(cfg.onSubmit)) return
+            const data = cloneDeep(model.value)
+            visible.value = !(await cfg.onSubmit(data, openParams))
+        } catch (err) {
+            visible.value = true
+        }
+    }
+    if (!cfg.saveButtonHidden) {
+        buttons.push({
+            text: cfg.saveButtonText || '保存',
+            type: 'primary',
+            async onClick() {
+                await submit()
+            }
+        })
+    }
+    if (!cfg.cancelButtonHidden) {
+        buttons.push({
+            text: '取消',
+            onClick: () => (visible.value = false)
+        })
+    }
+    const buttonsRef = reactive(
+        buttons.map((item, index) => {
+            if (item.onClick) {
+                const { onClick } = item
+                item.onClick = async () => {
+                    buttonsRef[index].loading = true
+                    await onClick()
+                    buttonsRef[index].loading = false
+                }
+            }
+            return item
+        })
+    )
+
+    const render = defineComponent({
+        props: {
+            inModal: Boolean
+        },
+        setup(props) {
+            onMounted(async () => {
+                if (!props.inModal) await onPullData()
+            })
+            return () => (
+                <>
+                    <AsyncForm
+                        ref={formRef}
+                        model={model.value}
+                        items={cfg.items}
+                        col={cfg.col}
+                    ></AsyncForm>
+                    {!props.inModal && (
+                        <div
+                            style={{
+                                textAlign: cfg.buttonAlign || 'center'
+                            }}
+                        >
+                            {renderButtons()}
+                        </div>
+                    )}
+                </>
+            )
+        }
+    })
+
+    const modalButtons = () =>
+        buttonsRef.map(item => <Button {...item}>{item.text}</Button>)
+    const renderButtons = () =>
+        buttonsRef.map(item => {
+            if (item.text !== '取消') {
+                return (
+                    <Button class="mx-2" {...item}>
+                        {item.text}
+                    </Button>
+                )
+            }
+        })
+    const renderModal = createVNode(() => (
+        <ConfigProvider componentSize="middle" locale={zhCN}>
+            <Modal
+                footer={isEmpty(buttons) ? null : modalButtons()}
+                title={modalTitle.value}
+                width={cfg.width}
+                v-model:visible={visible.value}
+            >
+                {{
+                    default: () => <render inModal={true} />
+                }}
+            </Modal>
+        </ConfigProvider>
+    ))
+    let created = false
+    const mountDOM = () => {
+        if (!created) {
+            const el = document.createDocumentFragment()
+            vueRender(renderModal, el as any)
+        }
+        created = true
+    }
+    const open = async (params: UseFormOpenParams) => {
+        openParams = params
+        mountDOM()
+        visible.value = true
+        modalTitle.value = params.title || cfg.title
+        await onPullData()
+    }
+    const onPullData = async () => {
+        if (!isFunction(cfg.onPullData)) return
+        model.value = await cfg.onPullData(openParams)
+    }
+    return {
+        open,
+        model,
+        render
+    }
+}
+
+```
+form.tsx
+```tsx
+iimport { defineComponent, PropType, ref } from 'vue'
+import { Form } from 'ant-design-vue'
+import { UseFormItem } from '@marketingcharge/views/useForm/types'
+import FormItem from './formItem'
+export default defineComponent({
+    props: {
+        items: {
+            type: Object as PropType<UseFormItem[]>,
+            required: true
+        },
+        col: {
+            type: Number,
+            required: true
+        },
+        model: {
+            type: Object as PropType<Record<string, any>>,
+            required: true
+        }
+    },
+    setup(props, { expose }) {
+        const items = props.items
+        const form = ref(null)
+        expose({ form })
+        return () => (
+            <Form ref={form} model={props.model}>
+                <div
+                    class="grid gap-x-4"
+                    style={{
+                        gridTemplateColumns: `repeat(${props.col},minmax(0,1fr))`
+                    }}
+                >
+                    {items.map(item => (
+                        <FormItem
+                            item={item}
+                            model={props.model}
+                            col={props.col}
+                        ></FormItem>
+                    ))}
+                </div>
+            </Form>
+        )
+    }
+})
+
+```
+formItem.tsx
+```tsx
+import { defineComponent, PropType } from 'vue'
+import { UseFormItem } from '@marketingcharge/views/useForm/types'
+import { FormItem, Input } from 'ant-design-vue'
+import { get, isEmpty, set } from 'lodash-es'
+
+export default defineComponent({
+    props: {
+        item: {
+            type: Object as PropType<UseFormItem>,
+            required: true
+        },
+        col: {
+            type: Number,
+            required: true
+        },
+        model: {
+            type: Object as PropType<Record<string, any>>,
+            required: true
+        }
+    },
+    setup(props) {
+        const item = props.item
+        const itemName = props.item.name as string
+        let n: number
+        if (props.col > 1 && item.colSpan) {
+            n = props.col > item.colSpan ? item.colSpan : props.col
+        }
+        let Render: any
+        if (item.render) {
+            Render = item.render
+        } else {
+            Render = Input
+        }
+
+        const itemProps = {
+            ...item,
+            render: null
+        }
+        if (isEmpty(itemProps.rules)) {
+            const rules: any = {}
+            if (itemProps.required) {
+                rules.required = true
+                rules.message = `${item.label}不能为空`
+            }
+            if (!isEmpty(rules)) {
+                itemProps.rules = rules
+            }
+        }
+
+        return () => {
+            let Children
+            if (item.render) {
+                Children = Render()
+            } else {
+                Children = (
+                    <Render
+                        value={get(props.model, itemName)}
+                        onUpdate:value={(v: string) => set(props.model, itemName, v)}
+                    ></Render>
+                )
+            }
+            return (
+                <FormItem {...itemProps} style={{ gridColumn: `span ${n}` }}>
+                    <Children />
+                </FormItem>
+            )
+        }
+    }
+})
 ```
