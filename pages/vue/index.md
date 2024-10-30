@@ -629,3 +629,59 @@ export default defineComponent({
     }
 })
 ```
+示例
+```tsx
+import { Select, SelectOption } from 'ant-design-vue'
+
+import { useForm } from './index'
+export const form = useForm({
+  title: '测试标题',
+  width: 1000,
+  col: 2,
+  onPullData: params => {
+    return { a: '', b: 2, c: 3, d: 4 }
+  },
+  onSubmit: async (model, params) => {
+    return true
+  },
+  items: [
+    {
+      label: '测试1',
+      name: 'a',
+      colSpan: 2,
+      required: true
+    },
+    {
+      label: '测试2',
+      name: 'b',
+      render: () => {
+        const { value } = form.model
+        return (
+          <Select v-model:value={value.b}>
+            <SelectOption value={1}>123</SelectOption>
+            <SelectOption value={2}>456</SelectOption>
+          </Select>
+        )
+      },
+      rules: {
+        required: true,
+        validator: () => {
+          if (form.model.value.b) {
+            return Promise.resolve()
+          }
+          return Promise.reject('测试2不能为空')
+        }
+      }
+    },
+    {
+      label: '测试3',
+      name: 'c',
+      required: true
+    },
+    {
+      label: '测试4',
+      name: 'd'
+    }
+  ]
+})
+```
