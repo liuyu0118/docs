@@ -354,25 +354,33 @@ export type UseFormOpenParams = {
 index.tsx
 
 ```tsx
-iimport {
+import {
     render as vueRender,
-        createVNode,
-        ref,
-        defineAsyncComponent,
-        defineComponent,
-        reactive,
-        onMounted
+    createVNode,
+    ref,
+    defineAsyncComponent,
+    defineComponent,
+    reactive,
+    onMounted,
+    nextTick
 } from 'vue'
 import { Modal, ConfigProvider, Button } from 'ant-design-vue'
-import { UseFormButton, UseFormConfig, UseFormOpenParams } from './types'
+import {
+    UseFormButton,
+    UseFormConfig,
+    UseFormItem,
+    UseFormOpenParams
+} from './types'
 import zhCN from 'ant-design-vue/lib/locale/zh_CN'
-import { cloneDeep, isEmpty, isFunction } from 'lodash-es'
+import { cloneDeep, isEmpty, isFunction, isString, set } from 'lodash-es'
+import formItem from '@marketingcharge/views/useForm/formItem'
 const AsyncForm = defineAsyncComponent(() => import('./form'))
 export function useForm(cfg: UseFormConfig) {
     const visible = ref(false)
     const modalTitle = ref()
     const model = ref<Record<string, any>>({})
     const formRef = ref(null)
+    const formItems = ref<any[]>(cfg.items)
     let buttons: UseFormButton[] = []
     let openParams: UseFormOpenParams
     if (cfg.buttons) {
@@ -386,7 +394,7 @@ export function useForm(cfg: UseFormConfig) {
     }
     const submit = async () => {
         const needValidateFields: any = []
-        cfg.items.forEach(item => {
+        formItems.value.forEach(item => {
             if (item.hidden !== true) needValidateFields.push(item.name)
         })
         try {
@@ -440,7 +448,7 @@ export function useForm(cfg: UseFormConfig) {
                     <AsyncForm
                         ref={formRef}
                         model={model.value}
-                        items={cfg.items}
+                        items={formItems.value}
                         col={cfg.col}
                     ></AsyncForm>
                     {!props.inModal && (
@@ -502,17 +510,27 @@ export function useForm(cfg: UseFormConfig) {
         if (!isFunction(cfg.onPullData)) return
         model.value = await cfg.onPullData(openParams)
     }
+    const hiddenItems = async (names: string | string[], value = true) => {
+        if (isString(names)) names = [names]
+        formItems.value.forEach(item => {
+            if (names.includes(item.name)) {
+                set(item, 'hidden', value)
+            }
+        })
+    }
     return {
         open,
         model,
-        render
+        render,
+        hiddenItems
     }
 }
+
 
 ```
 form.tsx
 ```tsx
-iimport { defineComponent, PropType, ref } from 'vue'
+import { defineComponent, PropType, ref } from 'vue'
 import { Form } from 'ant-design-vue'
 import { UseFormItem } from '@marketingcharge/views/useForm/types'
 import FormItem from './formItem'
@@ -543,13 +561,16 @@ export default defineComponent({
                         gridTemplateColumns: `repeat(${props.col},minmax(0,1fr))`
                     }}
                 >
-                    {items.map(item => (
-                        <FormItem
-                            item={item}
-                            model={props.model}
-                            col={props.col}
-                        ></FormItem>
-                    ))}
+                    {items.map(
+                        item =>
+                            !item.hidden && (
+                                <FormItem
+                                    item={item}
+                                    model={props.model}
+                                    col={props.col}
+                                ></FormItem>
+                            )
+                    )}
                 </div>
             </Form>
         )
@@ -631,57 +652,65 @@ export default defineComponent({
 ```
 示例
 ```tsx
-import { Select, SelectOption } from 'ant-design-vue'
+iimport { Select, SelectOption } from 'ant-design-vue'
 
 import { useForm } from './index'
 export const form = useForm({
-  title: '测试标题',
-  width: 1000,
-  col: 2,
-  onPullData: params => {
-    return { a: '', b: 2, c: 3, d: 4 }
-  },
-  onSubmit: async (model, params) => {
-    return true
-  },
-  items: [
-    {
-      label: '测试1',
-      name: 'a',
-      colSpan: 2,
-      required: true
+    title: '测试标题',
+    width: 1000,
+    col: 2,
+    onPullData: params => {
+        return { a: '', b: 2, c: 3, d: 4 }
     },
-    {
-      label: '测试2',
-      name: 'b',
-      render: () => {
-        const { value } = form.model
-        return (
-          <Select v-model:value={value.b}>
-            <SelectOption value={1}>123</SelectOption>
-            <SelectOption value={2}>456</SelectOption>
-          </Select>
-        )
-      },
-      rules: {
-        required: true,
-        validator: () => {
-          if (form.model.value.b) {
-            return Promise.resolve()
-          }
-          return Promise.reject('测试2不能为空')
+    onSubmit: async (model, params) => {
+        return true
+    },
+    items: [
+        {
+            label: '测试1',
+            name: 'a',
+            colSpan: 2,
+            required: true
+        },
+        {
+            label: '测试2',
+            name: 'b',
+            render: () => {
+                const { value } = form.model
+                if (value.b === 1) {
+                    console.log(111)
+                    form.hiddenItems('a')
+                } else {
+                    console.log(222)
+                    form.hiddenItems('a', false)
+                }
+                return (
+                    <Select v-model:value={value.b}>
+                        <SelectOption value={1}>123</SelectOption>
+                        <SelectOption value={2}>456</SelectOption>
+                    </Select>
+                )
+            },
+            rules: {
+                required: true,
+                validator: () => {
+                    if (form.model.value.b) {
+                        return Promise.resolve()
+                    }
+                    return Promise.reject('测试2不能为空')
+                }
+            }
+        },
+        {
+            label: '测试3',
+            name: 'c',
+            required: true
+        },
+        {
+            label: '测试4',
+            name: 'd'
         }
-      }
-    },
-    {
-      label: '测试3',
-      name: 'c',
-      required: true
-    },
-    {
-      label: '测试4',
-      name: 'd'
-    }
-  ]
+    ]
 })
+
 ```
