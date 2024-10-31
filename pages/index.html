@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Scale</title>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+        }
+        #app {
+            width: 100%;
+            height: 100%;
+            background-color: gray;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .box {
+            height: 200px;
+            width: 200px;
+            background-color: skyblue;
+            transform-origin: top left; /* 设置缩放的基点 */
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="box"></div>
+</div>
+
+<script>
+    function autoScale(selector, options) {
+        const element = document.getElementById(selector);
+        const { width, height } = options;
+
+        function init() {
+            const scaleX = innerWidth / width;
+            const scaleY = innerHeight / height;
+            const scale = Math.min(scaleX, scaleY);
+            element.style.transform = `scale(${scale})`;
+        }
+
+        init();
+        addEventListener('resize', init);
+    }
+    autoScale('app', {
+        width: 1920,
+        height: 1080
+    });
+</script>
+</body>
+</html>

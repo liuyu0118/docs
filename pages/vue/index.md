@@ -678,10 +678,8 @@ export const form = useForm({
             render: () => {
                 const { value } = form.model
                 if (value.b === 1) {
-                    console.log(111)
                     form.hiddenItems('a')
                 } else {
-                    console.log(222)
                     form.hiddenItems('a', false)
                 }
                 return (
