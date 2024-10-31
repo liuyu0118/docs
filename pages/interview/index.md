@@ -268,7 +268,9 @@ export default defineConfig({
 ```
 
 **vw和vh适配**
+
 >按照设计稿的尺寸将`px`按比例计算为`vw`和`vh`，这种方式比scale的工作量大一点
+
 ```scss
 //假设设计稿的尺寸为1920*1080，div元素为300px*200px
 //计算方式：
