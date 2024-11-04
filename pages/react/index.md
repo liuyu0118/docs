@@ -1181,6 +1181,283 @@ const [state,dispatch] = useReducer(reducer,initialArg,init?)
 - init 是一个可选的函数，用于初始化 state，如果编写了init函数，则默认值使用init函数的返回值，否则使用initialArg。
 
 
+#### useSyncExternalStore
+
+`useSyncExternalStore` 是 React 18 引入的一个 Hook，用于从外部存储（例如状态管理库、浏览器 API 等）获取状态并在组件中同步显示。
+>使用场景：订阅外部 store 例如(redux,Zustand)；订阅浏览器API 例如(online,storage,location)等 ；抽离逻辑，编写自定义hooks ；服务端渲染支持
+
+```tsx
+/**
+ * subscribe：用来订阅数据源的变化，接收一个回调函数，在数据源更新时调用该回调函数。
+ * getSnapshot：获取当前数据源的快照（当前状态）。
+ * getServerSnapshot?：在服务器端渲染时用来获取数据源的快照。
+ */
+const result = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?)
+
+const subscribe = (callback: () => void) => {
+  callback()// 订阅
+  
+  return () => {
+    // 取消订阅
+  }
+}
+
+const getSnapshot = () => {
+  return data
+}
+
+const res = useSyncExternalStore(subscribe, getSnapshot)
+```
+**案例**
+1. 订阅浏览器Api 实现自定义hook(useStorage)
+
+实现一个useStorage Hook，用于订阅 localStorage 数据。这样做，我们可以确保组件在 localStorage 数据发生变化时，自动更新同步。
+```ts
+//useStorage.ts
+import {useSyncExternalStore} from 'react'
+export const useStorage = (key:string,initValue:unknown ) => {
+
+    const subscribe =(callback:()=>void)=>{
+        window.addEventListener('storage', callback)
+        return ()=>{
+        window.removeEventListener('storage', callback)
+        }
+    }
+    const getSnapshot = ()=> localStorage.getItem(key)?  JSON.parse(localStorage.getItem(key)!): initValue
+
+    const res = useSyncExternalStore(subscribe,getSnapshot)
+
+    const updateStorage = (value:unknown)=>{
+        localStorage.setItem(key,JSON.stringify(value))
+        window.dispatchEvent(new StorageEvent('storage'))
+    }
+
+    return [res,updateStorage]
+}
+```
+```tsx
+//app.tsx
+import {useStorage} from "./hooks/useStorage.ts";
+
+function App() {
+const [count, setCount] = useStorage('count',0);
+  return (
+    <>
+      <div>count:{count}</div>
+      <button onClick={()=> {setCount(count + 1)}}>++++</button>
+      <button onClick={()=>{setCount(count - 1)}}>----</button>
+    </>
+  );
+}
+
+export default App;
+```
+2. 实现useHistory Hook，获取浏览器url
+```ts
+//useHistory.ts
+import { useSyncExternalStore} from 'react'
+
+export const useHistory = () => {
+
+  const subscribe = (callback: ()=> void) => {
+
+    addEventListener("popstate", callback)
+    addEventListener('hashchange', callback)
+
+    return ()=>{
+      removeEventListener('popstate',callback)
+      removeEventListener('hashchange',callback)
+    }
+  }
+
+  const getSnapshot = ()=> location.href
+
+  const push =(path:string)=>{
+    history.pushState(null,'',path)
+    dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const replace =(path:string)=>{
+    history.replaceState(null,'',path)
+    dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const url = useSyncExternalStore(subscribe,getSnapshot)
+  return [url,push,replace] as const
+}
+```
+```tsx
+//APP.tsx
+import {useHistory} from "./hooks/useHistory.ts";
+
+function App() {
+  const [url, push,replace] = useHistory();
+  return (
+          <>
+            <div>url:{url}</div>
+            <button onClick={()=> {push('/a')}}>to a</button>
+            <button onClick={()=>{replace('/b')}}>to b</button>
+          </>
+  );
+}
+
+export default App;
+```
+**注意事项：**
+如果 getSnapshot 返回值不同于上一次，React 会重新渲染组件。这就是为什么，如果总是返回一个不同的值，会进入到一个无限循环，并产生这个报错。
+```ts
+function getSnapshot() {
+  if (myStore.todos !== lastTodos) {
+    // 只有在 todos 真的发生变化时，才更新快照
+    lastSnapshot = { todos: myStore.todos.slice() };
+    lastTodos = myStore.todos;
+  }
+  return lastSnapshot;
+}
+```
+
+#### useTransition
+`useTransition` 是 React 18 中引入的一个 Hook，用于在不阻塞UI的情况下更新状态。
+
+```ts
+/**
+ * isPending(boolean)：告诉你是否存在待处理的 transition。
+ * startTransition(function)：使用此方法将状态更新标记为 transition
+ */
+const [isPending, startTransition] = useTransition();
+```
+
+**示例**
+
+这里使用mockjs模拟数据，并且我们结合vite插件实现一个api,这个api可以帮助我们模拟数据
+
+>调试时可以使用浏览器的Performance下的CUP四倍降速模拟
+
+```ts
+//vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import url from 'node:url'
+import mockjs from "mockjs"
+import type { ViteDevServer } from 'vite'; // 导入 ViteDevServer 类型
+import type { IncomingMessage, ServerResponse } from 'http'; // 导入 Node.js 的类型
+const viteMockServer = ()=>{
+  return {
+    name:'vite-mock-server',
+    configureServer(server:ViteDevServer){
+      server.middlewares.use('/list',(req: IncomingMessage, res: ServerResponse)=>{
+        const parseUrl = url.parse(req.url||'', true).query;
+        res.setHeader('content-type', 'application/json');
+        const data = mockjs.mock({
+          'list|1000':[
+            {
+              'id|+1':1,
+              name:parseUrl.keyword,
+              address:'@county(true)'
+            }
+
+          ]
+        })
+
+        res.end(JSON.stringify(data))
+
+      })
+    }
+  }
+}
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react(),viteMockServer()],
+  server: {
+    host: "0.0.0.0",
+    port: 3000,
+  },
+});
+```
+```tsx
+import {Input,List} from 'antd'
+import {ChangeEvent, useState, useTransition} from "react";
+interface item {
+    id: string;
+    name: string;
+    address: string;
+}
+function App() {
+    const [value, setValue] = useState('')
+    const [list, setList] = useState<item[]>([])
+    const [isPending, startTransition] = useTransition(); // 过渡
+    const changeHandler = (e: ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value
+        setValue(value)
+        fetch(`/list?keyword=${value}`).then(res => res.json()).then(data => {
+            //使用过度
+            startTransition(()=>{
+                setList(data.list)
+            })
+            //不使用过度
+            // setList(data.list)
+        })
+
+    }
+  return (
+    <>
+      <Input value={value} onChange={changeHandler}/>
+        {
+            isPending && <div>loading...</div>
+        }
+        <List
+            dataSource={list}
+            renderItem={(item) => (
+                <List.Item>
+                    <List.Item.Meta
+                        title={item.name}
+                        description={item.address}
+                    />
+                </List.Item>
+            )}
+        />
+    </>
+  );
+}
+
+export default App;
+```
+**注意事项**
+
+`startTransition`必须是同步的
+
+```ts
+startTransition(() => {
+  // 错误做法 在调用 startTransition 后更新状态
+  setTimeout(() => {
+    setPage('/about');
+  }, 1000);
+});
+
+setTimeout(() => {
+  startTransition(() => {
+    // 正确做法 在调用 startTransition 中更新状态
+    setPage('/about');
+  });
+}, 1000);
+
+
+startTransition(async () => {
+  await someAsyncFunction();
+  // 错误做法 在调用 startTransition 后更新状态
+  setPage('/about');
+});
+
+await someAsyncFunction();
+startTransition(() => {
+  // 正确做法 在调用 startTransition 中更新状态
+  setPage('/about');
+});
+```
+
+
+
+
 
 ### 副作用
 
