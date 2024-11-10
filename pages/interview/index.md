@@ -43,7 +43,7 @@ const FULFILLED = "fulfilled";
 const REJECTED = "rejected";
 //添加到微任务
 function runMicrotask(fn) {
-  if (typeof queueMicrotask === "undefined") {
+  if (typeof queueMicrotask === "function") {
     queueMicrotask(fn);
   } else if (
     typeof process === "object" &&
@@ -57,7 +57,7 @@ function runMicrotask(fn) {
     observer.observe(text, {
       characterData: true,
     });
-    text.data = "1";
+    text.textContent = "1";
   } else {
     setTimeout(fn);
   }
@@ -83,7 +83,9 @@ class MyPromise {
     if (this.#state !== PENDING) return;
     this.#value = value;
     this.#state = state;
-    this.#runTask();
+    if (this.#handlers.length){
+        this.#runTask()
+    }
   }
   #runTask() {
     runMicrotask(() => {

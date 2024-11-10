@@ -21,5 +21,43 @@
 - 发布版本安全码 SHA1：点击[如何获取](https://lbs.amap.com/faq/android/map-sdk/create-project/43112)，进入后这里需要安装 java jdk，配置好全局变量后，在证书文件（.keystore）所在的文件下打开`cmd`窗口输入`keytool -list -v -keystore zqt.keystore`后，再输入证书密码（对应证书私钥密码），就可以获取到`SHA1`码。
 - PackageName：对应打包时的包名（这里就是 Android 包名）。
 
+## 中文输入法导致的高频事件
+>场景：根据输入框的内容去后台进行模糊查询便于用户选择，实现：直接监听输入框的input事件进行模糊查询，在这种方式下英文是没有问题的，但是中文就会有bug，在输入过程中就触发了查询，这显然是不行的。
+![search](../../public//work/search.png)
+
+这里就需要使用合成事件`compositionstart` `compositionend`
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<input type="text">
+
+<script>
+    let isCompleted = false;
+    const input = document.querySelector('input');
+    function search() {
+        console.log('inputvalue===>', input.value)
+    }
+    input.addEventListener('input',()=>{
+        if (isCompleted) return
+        search()
+    })
+    input.addEventListener('compositionstart',()=>{
+        console.log('开始')
+        isCompleted = true
+    })
+    input.addEventListener('compositionend',()=>{
+        console.log('结束')
+        isCompleted = false
+        search()
+    })
+</script>
+</body>
+</html>
+```
 
 
