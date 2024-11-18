@@ -60,4 +60,96 @@
 </html>
 ```
 
+## 大文件上传
+>分片+多线程
+```js
+//main.js
+const input = document.querySelector('input[type="file"]');
+input.onchange = async function (e) {
+    const file = e.target.files[0]
+    console.time('chunks')
+    const chunks = await cutFile(file)
+    console.timeEnd('chunks')
+    console.log(chunks)
+}
+//设置分片大小 1M
+const CHUNK_SIZE = 1024 * 1024
+//获取线程
+const THREAD_COUNT = navigator.hardwareConcurrency || 4
+function cutFile(file) {
+    return new Promise(resolve => {
+        //分为多少片
+        const chunkCount = Math.ceil(file.size / CHUNK_SIZE)
+        //每个进程的片数
+        const threadCount = Math.ceil(chunkCount / THREAD_COUNT)
+        //总分片数
+        const result = []
+        //已经完成的次数
+        let finishCount = 0
+        for (let i = 0; i < THREAD_COUNT; i++) {
+            const worker = new Worker('./worker.js',{
+                type:'module'
+            });
+            const start = i * threadCount
+            //超出边界处理
+            let end =(i + 1) * threadCount
+            if (end > chunkCount)  end = chunkCount
+            worker.postMessage({
+                file,
+                CHUNK_SIZE,
+                start,
+                end
+            })
+            worker.onmessage = (e) => {
+                //按照顺序添加
+                for (let i=start; i < end; i++) {
+                    result[i] = e.data[i - start]
+                }
+                worker.terminate()
+                finishCount++
+                //判断所有线程是否完成
+                if (finishCount === THREAD_COUNT){
+                    resolve(result)
+                }
+
+            }
+        }
+    })
+}
+```
+```js
+//worker.js
+function createChunk(file,index,size) {
+    return new Promise((resolve, reject) => {
+        const start = index * size
+        const end = start + size
+        const fileReader = new FileReader()
+        const blob = file.slice(start, end)
+        fileReader.onload = (e)=>{
+            resolve({
+                start,
+                end,
+                index,
+                blob
+            })
+        }
+        fileReader.readAsArrayBuffer(blob)
+    })
+}
+onmessage = async function (e) {
+    const {
+        file,
+        CHUNK_SIZE,
+        start,
+        end
+    } = e.data
+    const proms =[]
+    for (let i = start; i < end; i++) {
+        proms.push(createChunk(file,i,CHUNK_SIZE))
+    }
+    const chunks = await Promise.all(proms)
+    postMessage(chunks)
+}
+```
+
 

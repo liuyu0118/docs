@@ -27,6 +27,7 @@ export default defineConfig({
       },
       { text: "vite", link: "/pages/vite/index.md" },
       { text: "css", link: "/pages/css/index.md" },
+      { text: "js", link: "/pages/js/index.md" },
       {
         text: "node",
         items: [
