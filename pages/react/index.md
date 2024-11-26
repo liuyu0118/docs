@@ -1480,6 +1480,55 @@ const deferredValue = useDeferredValue(value)
 
 ### 副作用
 
+#### useEffect
+
+> useEffect 是 React 中用于处理副作用的钩子。 并且 useEffect 还在这里充当生命周期函数，
+> 在之前你可能会在类组件中使用 componentDidMount、componentDidUpdate 和 componentWillUnmount 来处理这些生命周期事件。
+
+**纯函数与副作用函数**
+
+- 纯函数：相同的输入总是相同的输出，这样的函数是可预测的；无副作用，不会修改外部状态，也不依赖外部状态。
+- 副作用函数：在运行时会改变依赖外部状态的函数，可预测性降低，但副作用不一定是坏事，有时他的效果是我们所期待的。
+  - 操作引用类型
+  - 操作本地存储（localstorage，fecth，ajax）
+  - 操作 DOM
+  - 计时器
+
+示例
+
+```js
+//副作用函数，修改了外部变量
+let obj = { name: "张三" };
+const changeObj = (obj) => {
+  obj.name = "李四";
+};
+changeObj();
+//改为纯函数
+let obj = { name: "张三" };
+const changeObj = (obj) => {
+  const newObj = window.structuredClone(obj); //深拷贝，浏览器自带api较新
+  newObj.name = "李四";
+};
+changeObj();
+```
+
+用法
+
+```tsx
+useEffect(() => {
+  return () => {
+    //清理函数
+  };
+}, dependencies);
+```
+
+- setup：Effect 处理函数,可以返回一个清理函数。组件挂载时执行 setup,依赖项更新时先执行 cleanup 再执行 setup,组件卸载时执行 cleanup。
+- dependencies(可选)：setup 中使用到的响应式值列表(props、state 等)。必须以数组形式编写如[dep1, dep2]。不传则每次重渲染都执行 Effect。
+- 执行时机：
+  - didmount 组件渲染完成就会执行+ didupdate 更新时执行
+  - 依赖项发生变化执行，空数组只执行一次
+  - 组件卸载时会执行 setup 返回的清理函数，组件更新时也会执行；先执行清理函数，再执行 setup。
+
 ## 组件
 
 ### 全局组件
