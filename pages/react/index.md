@@ -1528,6 +1528,36 @@ useEffect(() => {
   - didmount 组件渲染完成就会执行+ didupdate 更新时执行
   - 依赖项发生变化执行，空数组只执行一次
   - 组件卸载时会执行 setup 返回的清理函数，组件更新时也会执行；先执行清理函数，再执行 setup。
+ 
+
+#### useLayoutEffect
+>useLayoutEffect 是 React 中的一个 Hook，用于在浏览器重新绘制屏幕之前触发。与 useEffect 类似。
+
+```tsx
+useLayoutEffect(() => {
+  // 副作用代码
+  return () => {
+    // 清理代码
+  }
+}, [dependencies]);
+```
+- setup：Effect处理函数,可以返回一个清理函数。组件挂载时执行setup,依赖项更新时先执行cleanup再执行setup,组件卸载时执行cleanup。
+- dependencies(可选)：setup中使用到的响应式值列表(props、state等)。必须以数组形式编写如[dep1, dep2]。不传则每次重渲染都执行Effect。
+
+**区别**
+| 区别   | useLayoutEffect | useEffect   |
+| ------ | ---- | ------ |
+| 执行时机  |浏览器完成布局和绘制之前|浏览器完成布局和绘制之后|
+| 执行方式  | 同步执行 | 异步执行 |
+| DOM渲染   | 阻塞   | 不阻塞   |
+
+**应用场景**
+
+- 需要同步读取或更改DOM：例如，你需要读取元素的大小或位置并在渲染前进行调整。
+- 防止闪烁：在某些情况下，异步的useEffect可能会导致可见的布局跳动或闪烁。例如，动画的启动或某些可见的快速DOM更改。
+- 模拟生命周期方法：如果你正在将旧的类组件迁移到功能组件，并需要模拟 componentDidMount、componentDidUpdate和componentWillUnmount的同步行为。
+
+
 
 ## 组件
 
