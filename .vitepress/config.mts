@@ -17,17 +17,20 @@ export default defineConfig({
         items: [
           {
             text: "react",
-            items: [{ text: "教程", link: "/pages/react/index.md" }],
+            items: [{ text: "教程", link: "/pages/react/typescript.md" }],
           },
           {
             text: "vue",
-            items: [{ text: "组件", link: "/pages/vue/index.md" }],
+            items: [{ text: "组件", link: "/pages/vue/typescript.md" }],
           },
         ],
       },
-      { text: "vite", link: "/pages/vite/index.md" },
-      { text: "css", link: "/pages/css/index.md" },
-      { text: "js", link: "/pages/js/index.md" },
+      { text: "vite", link: "/pages/vite/typescript.md" },
+      { text: "css", link: "/pages/css/typescript.md" },
+      { text: "javascript", items: [
+          { text: "new", link:  "/pages/js/new.md" },
+          { text: "typescript", link: "/pages/js/typescript.md" },
+        ],},
       {
         text: "node",
         items: [
@@ -45,11 +48,11 @@ export default defineConfig({
       },
       {
         text: "面试",
-        link: "/pages/interview/index.md",
+        link: "/pages/interview/typescript.md",
       },
       {
         text: "问题",
-        link: "/pages/work/index.md",
+        link: "/pages/work/typescript.md",
       },
     ],
     // 设置搜索框的样式
