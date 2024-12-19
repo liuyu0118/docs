@@ -1,3 +1,33 @@
+## vue2加了属性丢失样式
+>场景：封装了一个loading组件 默认先显示loading效果，一秒后显示正文，在给封装的组件的展示loading的div标签上加上一些属性，会导致正文的样式没有命中而导致样式丢失。
+```vue
+<template>
+  <div>
+    <template v-if="loading">
+      <div>//这里的div没有属性就不会导致样式丢失
+      <slot name="loading"></slot>
+      </div>
+      <div :key="a" :a="1">//这里的div添加了a属性 就会导致样式丢失 原因是丢失了scopeid，因为vue使用的是vnode这里是使用了被隐藏的div的vnode，加上key就可以解决这个问题
+        <slot name="loading"></slot>
+      </div>
+    </template>
+  </div>
+</template>
+```
+到这里这个问题就已经解决了，但是想要知道为什么 就需要看vue的源码
+
+**源码**
+
+先把项目使用版本的vue源码拉下来，但是源码的文件有很多，我们怎么定位我们想要的方法呢？ 这里就可以使用一个vscode插件CodeGeex，
+使用workspace功能进行搜索，比如：这个项目的哪个方法负责v-if变换的时候更新页面dom，当进行这个搜索时，他会提示你v-if的更新是由vue
+的虚拟dom diff算法处理的，所有我们可以问他dom diff算法在哪里，找到我们想要的看的方法，怎么进行调试呢？我们可以在源码所在位置找一个比较唯一的注释，
+然后我们去到网页中去到network选项，使用ctrl+shift+f在search中搜索刚刚复制的注释就能找出调试位置进行断点调试，本次的这个问题在调试发现一个setScope方法，
+这个方法是用来设置scopeid，继续看有发现了一个sameVode方法，里面有很多判断条件，我们一个一个看，其中一个判断isDef(a.data) === isDef(b.data)，
+这个方法是判断有没有a.data和b.data，所以我们只要写了一个属性他就会有，这样这整个判断就会返回true然后上传的判断过了就会公用虚拟节点，这个节点就是组件中的节点，
+因为这个组件本身他是没有写<style scoped>，使用组件的页面就会使用这个公用节点
+
+
+
 ## uniapp 打包定位失效
 
 > 问题描述：在使用 uniapp 开发 app 时，发现真机调试时定位没有问题，打包上线后定位功能失效。
