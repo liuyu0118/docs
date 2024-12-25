@@ -99,8 +99,7 @@ export const downloadTemp = (branch, project) => {
   },
 ```
 
-![image.png](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/42ec6fd96ec949eaaffafdf311398006~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg5oOz6KaB5Y676ZW_5a6J:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMTcyMzY1MzQ5NTQ2Nzg4MCJ9&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1726133647&x-orig-sign=kOFRcPCoyz1zpOth2Vy9S3R3v6o%3D)
+![image.png](../../public/node/cli1.webp)
 
-![image.png](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/854ce7f1cf474d69a230885da9e7ceea~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg5oOz6KaB5Y676ZW_5a6J:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMTcyMzY1MzQ5NTQ2Nzg4MCJ9&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1726133647&x-orig-sign=%2FvIzPF3Zr9%2BX3e3TuN9dx6AQ3Qo%3D)
-
+![image.png](../../public/node/cli2.webp)
 至此我们便有了自己的脚手架
