@@ -26,7 +26,6 @@
 这个方法是判断有没有a.data和b.data，所以我们只要写了一个属性他就会有，这样这整个判断就会返回true然后上传的判断过了就会公用虚拟节点，这个节点就是组件中的节点，
 因为这个组件本身他是没有写<style scoped>，使用组件的页面就会使用这个公用节点
 
-
 ## uniapp 打包定位失效
 
 > 问题描述：在使用 uniapp 开发 app 时，发现真机调试时定位没有问题，打包上线后定位功能失效。
@@ -180,6 +179,7 @@ onmessage = async function (e) {
     postMessage(chunks)
 }
 ```
+
 ## 封装分时函数
 >场景：在页面插入20000个元素而不卡顿
 ```html
@@ -235,3 +235,55 @@ onmessage = async function (e) {
 </html>
 ```
 
+
+
+## 接口请求顺序和返回顺序不一致
+
+>场景：在单页应用中，用户连续点击表格的分页页码，会导致展示的数据与对应页数的内容不一致
+
+**解决办法**
+
+- 取消上次的请求接口
+- 在请求时添加一个requestId，返回时后端会返回对应的id，根据这个id进行判断（需要后端改动）
+
+```ts
+//基于axios封装取消上次请求
+const http = axios.create({
+    baseURL: config.env?.apiUrl,
+    timeout: 120000
+})
+interface ControllerConfig {
+    controller: AbortController;
+    url: string;
+}
+let controllers:ControllerConfig[] = []
+http.interceptors.request.use(
+    config => {
+        if (controllers.length > 0) {
+            controllers = controllers.filter(cfg => {
+                if(config.url === cfg.url){
+                    cfg.controller.abort()
+                    return false
+                }
+                return true
+            })
+        }
+        const controller = new AbortController()
+        config.signal = controller.signal
+        controllers.push({controller,url:config.url!})
+        return config
+    },
+    err => {
+        return Promise.reject(err)
+    }
+)
+http.interceptors.response.use(
+    async response => {
+        controllers = controllers.filter(cfg => response.config.url === cfg.url)
+        return response
+    },
+    err => {
+        return Promise.reject(err)
+    }
+)
+```
