@@ -23,7 +23,7 @@ export default defineConfig({
             text: "vue",
             items: [
                 { text: "源码", link: "/pages/vue/index.md" },
-                { text: "组件", link: "/pages/vue/module.md" }
+                { text: "组件", link: "/pages/vue/component.md" }
             ],
           },
         ],
@@ -31,7 +31,7 @@ export default defineConfig({
       { text: "vite", link: "/pages/vite/index.md" },
       { text: "css", link: "/pages/css/index.md" },
       { text: "javascript", items: [
-          { text: "new", link:  "/pages/js/new.md" },
+          { text: "随笔", link:  "/pages/js/new.md" },
           { text: "typescript", link: "/pages/js/typescript.md" },
         ],},
       {
