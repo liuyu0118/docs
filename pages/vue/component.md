@@ -1,4 +1,4 @@
-## 封装 protable
+## protable
 > vue3 tsx antd
 types.ts
 ```ts
@@ -310,7 +310,7 @@ export default defineComponent({
 });
 ```
 
-## 封装 useForm 
+## useForm 
 > vue3 tsx antd
 
 types.ts

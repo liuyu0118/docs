@@ -1,5 +1,4 @@
 import { defineConfig } from "vitepress";
-
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: "/docs/",
@@ -8,21 +7,21 @@ export default defineConfig({
   head: [["link", { rel: "icon", href: "/docs/head.svg" }]],
   themeConfig: {
     outlineTitle: "目录",
-    outline: [2, 6],
+    outline: [2,2],
     sidebar: [],
     aside: "left",
     nav: [
       {
         text: "框架",
         items: [
-          {
-            text: "react",
-            items: [{ text: "教程", link: "/pages/react/index.md" }],
-          },
+          // {
+          //   text: "react",
+          //   items: [{ text: "教程", link: "/pages/react/index.md" }],
+          // },
           {
             text: "vue",
             items: [
-                { text: "源码", link: "/pages/vue/index.md" },
+                // { text: "源码", link: "/pages/vue/index.md" },
                 { text: "组件", link: "/pages/vue/component.md" }
             ],
           },
@@ -50,11 +49,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "面试",
-        link: "/pages/interview/index.md",
-      },
-      {
-        text: "问题",
+        text: "问题/面试",
         link: "/pages/work/index.md",
       },
     ],

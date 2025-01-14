@@ -1,6 +1,5 @@
 ---
 layout: home
-
 hero:
   name: "柒的文档网站"
   text: "知行合一"
