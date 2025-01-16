@@ -1,3 +1,9 @@
+- 插件开发 dns预解析
+- 使用avif图片格式：
+  - 处理动态资源：腾讯方案：内容协商技术：通过统一的url去区分不同的资源，在请求头设置：accept:image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+  - 静态资源（public中）：图片统一使用`avif`格式，在处理静态资源时也可以加上这个accept请求头，虽然静态文件的请求通常是直接返回的，但服务器仍然可以根据 Accept 头来优化响应。
+
+
 ## vue2加了属性丢失样式
 >场景：封装了一个loading组件 默认先显示loading效果，一秒后显示正文，在给封装的组件的展示loading的div标签上加上一些属性，会导致正文的样式没有命中而导致样式丢失。
 ```vue
@@ -413,7 +419,12 @@ const p = new MyPromise((resolve, reject) => {
 
 ## 性能优化
 
-**1、启用前端缓存<a id="id1"></a>**
+### 1、图像格式
+
+- 处理动态资源：腾讯方案：内容协商技术：通过统一的url去区分不同的资源，在请求头设置：accept:image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+- 静态资源（public中）：图片统一使用`avif`格式，在处理静态资源时也可以加上这个accept请求头，虽然静态文件的请求通常是直接返回的，但服务器仍然可以根据 Accept 头来优化响应。
+
+### 2、启用前端缓存<a id="id1"></a>
 
 缓存范围：有哈希值的文件设置强缓存即可。没有哈希值的文件（比如 index.html）设置协商缓存，缓存主要针对静态资源
 
@@ -425,7 +436,7 @@ const p = new MyPromise((resolve, reject) => {
 
 缺点：占内存（有些缓存会被存到内存中）
 
-**强制缓存（强缓存）基于 Cache-control<a id="id2"></a>**
+### 强制缓存（强缓存）基于 Cache-control<a id="id2"></a>
 
 浏览器判断请求的目标资源有效命中强缓存，如果命中，则可以直接从内存中读取目标资源，无需与服务器做任何通讯
 
@@ -440,7 +451,7 @@ const p = new MyPromise((resolve, reject) => {
 
 注：public 表示资源在客户端和代理服务器都可以被缓存，private 则表示资源只能在客户端被缓存，拒绝资源在代理服务器缓存，如果这两个属性值都没有被设置，则默认为 private，public 和 private 也是一组互斥属性。他们两个不能同时出现在响应头的 cache-control 字段中。
 
-**协商缓存 （ETag）<a id="id3"></a>**
+### 协商缓存 （ETag）<a id="id3"></a>
 
 实现协商缓存就需要设置`no-cache`
 
@@ -452,7 +463,7 @@ const p = new MyPromise((resolve, reject) => {
 - 第二次请求某资源的时候，客户端自动从缓存中读取出上一次服务端返回的 ETag 也就是文件指纹。并赋给请求头的 if-None-Match 字段，让上一次的文件指纹跟随请求一起回到服务端。
 - 服务端拿到请求头中的 is-None-Match 字段值（也就是上一次的文件指纹），并再次读取目标资源并生成文件指纹，两个指纹做对比。如果两个文件指纹完全吻合，说明文件没有被改变，则直接返回 304 状态码和一个空的响应体并 return。如果两个文件指纹不吻合，则说明文件被更改，那么将新的文件指纹重新存储到响应头的 ETag 中并返回给客户端
 
-**2、开启 GZIP 压缩**
+### 3、开启 GZIP 压缩
 
 这里以`vite+vue`项目为例
 
@@ -489,7 +500,7 @@ export default defineConfig({
 
 以上配置完成后要确保你所用的服务器能正确处理 gzip 文件
 
-**3、代码层面**
+### 4、代码层面
 
 - 使用函数节流和函数防抖
 - 减少重排和重绘
@@ -635,6 +646,8 @@ $designheight: 1080;
 
 - 使用loading图，但是体验稍差。
 - 使用骨架屏，可以使用切图，但是可能整页切图质量较大，也会占用网络资源，参考社区自动化方案如`page-skeleton-webpack-plugin`。
+
+## 
 
 
 

@@ -1,5 +1,7 @@
 import { defineConfig } from "vitepress";
 // https://vitepress.dev/reference/site-config
+const isDevelopment = process.env.NODE_ENV === 'development';
+console.log(isDevelopment,'isDevelopment');
 export default defineConfig({
   base: "/docs/",
   title: "柒文档",
@@ -27,12 +29,27 @@ export default defineConfig({
           },
         ],
       },
-      { text: "vite", link: "/pages/vite/index.md" },
+      { text: "构建工具", items: [
+          // {
+          //   text:'webpack',items:[
+          //     { text: "插件", link:  "/pages/vite/plugin.md" },
+          //     { text: "vite", link: "/pages/vite/index.md" },
+          //   ]
+          // },
+          {
+            text:'vite',items:[
+              { text: "插件", link:  "/pages/vite/plugin.md" },
+              { text: "实践", link: "/pages/vite/index.md" },
+            ]
+          }
+        ],
+      },
       { text: "css", link: "/pages/css/index.md" },
       { text: "javascript", items: [
           { text: "随笔", link:  "/pages/js/new.md" },
           { text: "typescript", link: "/pages/js/typescript.md" },
-        ],},
+        ],
+      },
       {
         text: "node",
         items: [
@@ -52,6 +69,11 @@ export default defineConfig({
         text: "问题/面试",
         link: "/pages/work/index.md",
       },
+      ...(isDevelopment
+          ?[{
+            text: '简历',
+            link: '/pages/curriculumVitae.md',
+          }]:[]),
     ],
     // 设置搜索框的样式
     search: {
