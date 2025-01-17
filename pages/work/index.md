@@ -1,9 +1,3 @@
-- 插件开发 dns预解析
-- 使用avif图片格式：
-  - 处理动态资源：腾讯方案：内容协商技术：通过统一的url去区分不同的资源，在请求头设置：accept:image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
-  - 静态资源（public中）：图片统一使用`avif`格式，在处理静态资源时也可以加上这个accept请求头，虽然静态文件的请求通常是直接返回的，但服务器仍然可以根据 Accept 头来优化响应。
-
-
 ## vue2加了属性丢失样式
 >场景：封装了一个loading组件 默认先显示loading效果，一秒后显示正文，在给封装的组件的展示loading的div标签上加上一些属性，会导致正文的样式没有命中而导致样式丢失。
 ```vue
@@ -502,6 +496,18 @@ export default defineConfig({
 
 ### 4、代码层面
 
+#### 使用avif图片格式
+- 处理动态资源：腾讯方案：内容协商技术：通过统一的url去区分不同的资源，在请求头设置：accept:image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+- 静态资源（public中）：图片统一使用`avif`格式，在处理静态资源时也可以加上这个accept请求头，虽然静态文件的请求通常是直接返回的，但服务器仍然可以根据 Accept 头来优化响应。
+
+#### Terser
+> 做代码压缩和混淆的，在代码压缩（打包）时删除console，debugger等语句
+
+- 使用vue-cli/react-cra/webpack搭建的项目直接在webpack中配置
+- vite项目中需要下载terset后进行配置
+
+#### 其他
+
 - 使用函数节流和函数防抖
 - 减少重排和重绘
 - 尽量使用 CSS 完成动画效果
@@ -647,10 +653,88 @@ $designheight: 1080;
 - 使用loading图，但是体验稍差。
 - 使用骨架屏，可以使用切图，但是可能整页切图质量较大，也会占用网络资源，参考社区自动化方案如`page-skeleton-webpack-plugin`。
 
-## 
+## 对域名做dns优化
 
+>DNS预解析（dns-prefetch ）是前端网络性能优化的一种措施，它根据浏览器定义的规则，提前解析之后可能会用到的域名，使解析结果缓存到系统缓存中，缩短DNS解析时间，进而提高网站的访问速度。
 
+### DNS预解析的原理
+当浏览器访问一个域名的时候，需要解析一次 DNS，获得对应域名的 ip 地址；在解析过程中，按照如下的顺序逐步读取缓存，直到拿到IP地址：
+- 浏览器缓存
+- 系统缓存
+- 路由器缓存
+- ISP(运营商)DNS缓存
+- 根域名服务器
+- 顶级域名服务器
+- 主域名服务器
 
+`dns-prefetch`就是在将解析后的IP缓存在系统中；这样就有效地缩短了 DNS 解析时间。因为在本地操作系统做了 DNS 缓存，使得 DNS 在解析的过程中，
+提前在系统缓存中找到了对应 IP；这样一来，后续的解析步骤就不用执行了，进而也就缩短了 DNS 解析时间。
+
+### 开启开启DNS预解析
+在 HTML 的 head 部分添加以下代码来启用 DNS 预解析，href 属性指定了需要预解析的主机名：
+```html
+<link rel="dns-prefetch" href="//douyin.com">
+```
+在项目中我们可能会遇到一个问题，就是很多地方使用到了第三方的外链，比如图片、CSS、JS，由于项目是团队开发，有时候还不知道项目哪些地方引用了第三方的外链，所以我们不可能通过 link 标签的形式将这些第三方外链一个个引入并开启 DNS 预解析。
+这个时候需要写一个插件去帮我们查找项目中所有的引入的第三方外链
+
+```js
+// ./scripts/dns-prefetch.js
+const fs = require('fs')
+const path = require('path')
+const { parse } = require('node-html-parser')
+const { glob } = require('glob')
+const urlRegex = require('url-regex')
+
+// 获取外部链接的正则表达式
+const urlPattern = /(https?:\/\/[^/]*)/i
+const urls = new Set()
+
+// 遍历dist目录中的所有HTML、JS、CSS文件
+async function searchDomin() {
+    const files = await glob('dist/**/*.{html,css,js}')
+    for (const file of files) {
+        const source = fs.readFileSync(file, 'utf-8')
+        const matches = source.match(urlRegex({ strict: true }))
+        if (matches) {
+            matches.forEach((url) => {
+                const match = url.match(urlPattern)
+                if (match && match[1]) {
+                    urls.add(match[1])
+                }
+            })
+        }
+    }
+}
+
+// 在index.html文件<head>标签中插入link标签
+async function insertLinks() {
+    const files = await glob('dist/**/*.html')
+    const links = [...urls].map((url) => `<link rel="dns-prefetch" href="${url}" />`).join('\n')
+    
+    for (const file of files) {
+        const html = fs.readFileSync(file, 'utf-8')
+        const root = parse(html)
+        const head = root.querySelector('head')
+        head.insertAdjacentHTML('afterbegin', links)
+        fs.writeFileSync(file, root.toString())
+    }
+}
+
+async function main() {
+    await searchDomin()
+    await insertLinks()
+}
+
+main()
+```
+```json
+//package.json
+"scripts": {
+  "build": "vite bulid && node ./scripts/dns-prefetch.js"
+}
+```
+简单来说就是，遍历打包后的 dist 目录中的所有 HTML、JS、CSS 文件，将所有外链的域名存起来，然后在 dist 目录下 index.html 文件的 head 标签中依次插入 link 标签，同时开启 DNS 预解析
 
 
 
