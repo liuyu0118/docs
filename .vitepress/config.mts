@@ -1,18 +1,25 @@
 import { defineConfig } from "vitepress";
 // https://vitepress.dev/reference/site-config
-const isDevelopment = process.env.NODE_ENV === 'development';
-console.log(isDevelopment,'isDevelopment');
 export default defineConfig({
   base: "/docs/",
   title: "柒文档",
   description: "A VitePress Site",
   head: [["link", { rel: "icon", href: "/docs/head.svg" }]],
+  vite: {
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    },
+  },
   themeConfig: {
     outlineTitle: "目录",
     outline: [2,2],
     sidebar: [],
     aside: "left",
     nav: [
+      {
+        text: '简历',
+        link: '/pages/curriculumVitae.md',
+      },
       {
         text: "框架",
         items: [
@@ -66,14 +73,9 @@ export default defineConfig({
         ],
       },
       {
-        text: "问题/面试",
+        text: "问题/工作",
         link: "/pages/work/index.md",
-      },
-      ...(isDevelopment
-          ?[{
-            text: '简历',
-            link: '/pages/curriculumVitae.md',
-          }]:[]),
+      }
     ],
     // 设置搜索框的样式
     search: {
