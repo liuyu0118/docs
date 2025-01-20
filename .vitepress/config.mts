@@ -16,10 +16,10 @@ export default defineConfig({
     sidebar: [],
     aside: "left",
     nav: [
-      {
-        text: '简历',
-        link: '/pages/curriculumVitae.md',
-      },
+      // {
+      //   text: '简历',
+      //   link: '/pages/curriculumVitae.md',
+      // },
       {
         text: "框架",
         items: [
