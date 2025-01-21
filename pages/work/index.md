@@ -742,9 +742,105 @@ main()
 ```
 简单来说就是，遍历打包后的 dist 目录中的所有 HTML、JS、CSS 文件，将所有外链的域名存起来，然后在 dist 目录下 index.html 文件的 head 标签中依次插入 link 标签，同时开启 DNS 预解析
 
+## 实现自动检测更新
 
+```ts
 
+import { ElMessageBox } from 'element-plus'
 
+let lastSrcs: any;  //上一次获取到的script地址
+let needTip = true; // 默认开启提示
+
+const scriptReg = /<script.*src=["'](?<src>[^"']+)/gm;
+
+const extractNewScripts = async () => {
+    const html = await fetch('/?_timestamp=' + Date.now()).then((resp) => resp.text());
+    scriptReg.lastIndex = 0;
+    let result = [];
+    let match: RegExpExecArray
+    while ((match = scriptReg.exec(html) as RegExpExecArray)) {
+        result.push(match.groups?.src)
+    }
+    return result;
+}
+
+const needUpdate = async () => {
+    const newScripts = await extractNewScripts();
+    if (!lastSrcs) {
+        lastSrcs = newScripts;
+        return false;
+    }
+    let result = false;
+    if (lastSrcs.length !== newScripts.length) {
+        result = true;
+    }
+    for (let i = 0; i < lastSrcs.length; i++) {
+        if (lastSrcs[i] !== newScripts[i]) {
+            result = true;
+            break
+        }
+    }
+    lastSrcs = newScripts;
+    return result;
+}
+const DURATION = 10000;
+
+export const autoRefresh = () => {
+    setTimeout(async () => {
+        const willUpdate = await needUpdate();
+        if (willUpdate) {
+            // 延时更新，防止部署未完成用户就刷新空白
+            setTimeout(() => {
+                ElMessageBox.confirm('检测到页面有内容更新，为了功能的正常使用，是否立即刷新？', '更新提示', {
+                    confirmButtonText: '确认',
+                    showCancelButton: false,
+                    type: 'warning'
+                }).then(() => {
+                    location.reload();
+                })
+            }, 30000);
+            needTip = false; // 关闭更新提示，防止重复提醒
+        }
+        if (needTip) {
+            autoRefresh();
+        }
+    }, DURATION)
+}
+```
+```ts
+/** 
+ * @description vite document address
+ * https://vitejs.cn/config/ 
+ * vite.config
+ */
+export default xxx = () => {
+  return {
+    base: './',
+    resolve: {
+      ...
+    },
+    server: {
+      ...
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          chunkFileNames: 'js/[hash].js', // 引入文件名的名称
+          entryFileNames: 'js/[hash].js', // 包的入口文件名称
+          assetFileNames: '[ext]/[hash].[ext]', // 资源文件像 字体，图片等
+        }
+      }
+    }
+  }
+}
+```
+```ts
+//main
+import { autoRefresh } from "@/utils/auto-update"
+if (import.meta.env.MODE == 'production') {
+  autoRefresh()
+}
+```
 
 
 
